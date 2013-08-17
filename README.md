@@ -1,0 +1,4 @@
+delugemanager
+=============
+
+Automated deluge manager
