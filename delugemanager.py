@@ -49,11 +49,13 @@ status_keys = ["state",
                "time_added"
                ]
 
+non_fatal_errors = ["timed out", "Connection timed out"]
+
 count = 0
 torrent_ids = []
 
 # CONFIGURATION
-maxlimits = {'bitmetv.org': 55,
+maxlimits = {'bitmetv.org': 50,
              'tvtorrents.com': 50}
 
 max_ratio = 10
@@ -146,10 +148,14 @@ def on_torrents_status(all_torrents):
     if args['delete_orphans']:
         counter = 0
         for torrent_id, status in torrents_by_tracker.get("No tracker", []):
-            tlist.append(client.core.remove_torrent(torrent_id, True))
-            total_delete_count +=1
-            log_removal(status)
-            counter += 1
+            # Don't count timed out trackers as no tracker torrents
+            # this happens f.ex. when deluge is started with a big torrent load, 
+            # not all torrents can connect in time
+            if not any(reason in status["tracker_status"] for reason in non_fatal_errors):
+                tlist.append(client.core.remove_torrent(torrent_id, True))
+                total_delete_count +=1
+                log_removal(status)
+                counter += 1
             # Max 5 at a time
             if counter > orphan_limit: break
 
