@@ -5,6 +5,7 @@ from deluge.ui.client import client
 import deluge.component as component
 from twisted.internet import reactor, defer
 import time
+import datetime
 import logging
 from urlparse import urlparse
 import argparse
@@ -76,8 +77,15 @@ def printReport(rresult):
     endSession(None)
 
 
-def remove_torrents(torrents):
-    print "Would remove: ", torrents
+def print_info(status):
+    print("--State: %s" % (status["state"]))
+    print("--Added: %s" % (time.ctime(status["time_added"])))
+    added = datetime.datetime.fromtimestamp(status["time_added"])
+    td = datetime.datetime.now() - added
+    hours, minutes, seconds = td.seconds // 3600, td.seconds // 60 % 60, td.seconds % 60
+    print("--Age: %dd %dh %dm %ds" % (td.days, hours, minutes, seconds))
+    print("--Ratio: %s" % (status["ratio"]))
+    print("--Tracker: %s" % (status["tracker"]))
 
 def log_removal(status, reason=None):
     print("Added for removal: %s" % (status["name"]))
@@ -85,11 +93,7 @@ def log_removal(status, reason=None):
         print("--Reason: %s" % reason)
     else:
         print("--Reason: %s" % (status["tracker_status"]))
-    print("--State: %s" % (status["state"]))
-    print("--Added: %s" % (time.ctime(status["time_added"])))
-    print("--Ratio: %s" % (status["ratio"]))
-    print("--Tracker: %s" % (status["tracker"]))
-
+    print_info(status)
 
 def on_torrents_status(all_torrents):
     global filtertime
@@ -152,6 +156,15 @@ def on_torrents_status(all_torrents):
             # this happens f.ex. when deluge is started with a big torrent load, 
             # not all torrents can connect in time
             if not any(reason in status["tracker_status"] for reason in non_fatal_errors):
+                added = datetime.datetime.fromtimestamp(status["time_added"])
+                td = datetime.datetime.now() - added
+                hours, minutes, seconds = td.seconds // 3600, td.seconds // 60 % 60, td.seconds % 60
+                # don't delete torrents under 1d old as orphans, it might be a connection issue
+                if td.days < 1:
+                    print("Skipping %s" % status["name"])
+                    print("Reason: under 1d old")
+                    print_info(status)
+                    continue
                 tlist.append(client.core.remove_torrent(torrent_id, True))
                 total_delete_count +=1
                 log_removal(status)
