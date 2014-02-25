@@ -133,17 +133,22 @@ def on_torrents_status(all_torrents):
             if limit_count >= limit:
                 # delete up to limit + 1 to make room
                 delete_count = limit_count - limit
-                print("Tracker %s is %d over limit" % (tracker, delete_count))
                 delete_count += 1
-                print("Deleting %d oldest torrents to make room" % delete_count)
+
+                if is_interactive:
+                    print("Tracker %s is %d over limit" % (tracker, delete_count))
+                    print("Deleting %d oldest torrents to make room" % delete_count)
 
                 # start deleting from the oldest onwards
                 for torrent_id, status in sorted(all_torrents.items(), key=lambda item: item[1]["time_added"]):
                     if tracker in status['tracker']:
                         tlist.append(client.core.remove_torrent(torrent_id, True))
+
                         delete_count = delete_count - 1
                         total_delete_count += 1
-                        log_removal(status, "tracker %s over limit" % tracker)
+
+                        if is_interactive:
+                            log_removal(status, "tracker %s over limit" % tracker)
                         if delete_count <= 0:
                             break
 
@@ -153,7 +158,7 @@ def on_torrents_status(all_torrents):
         counter = 0
         for torrent_id, status in torrents_by_tracker.get("No tracker", []):
             # Don't count timed out trackers as no tracker torrents
-            # this happens f.ex. when deluge is started with a big torrent load, 
+            # this happens f.ex. when deluge is started with a big torrent load,
             # not all torrents can connect in time
             if not any(reason in status["tracker_status"] for reason in non_fatal_errors):
                 added = datetime.datetime.fromtimestamp(status["time_added"])
@@ -161,13 +166,14 @@ def on_torrents_status(all_torrents):
                 hours, minutes, seconds = td.seconds // 3600, td.seconds // 60 % 60, td.seconds % 60
                 # don't delete torrents under 1d old as orphans, it might be a connection issue
                 if td.days < 1:
-                    print("Skipping %s" % status["name"])
-                    print("Reason: under 1d old")
-                    print_info(status)
+                    if is_interactive:
+                        print("Skipping %s" % status["name"])
+                        print("Reason: under 1d old")
+                        print_info(status)
                     continue
                 tlist.append(client.core.remove_torrent(torrent_id, True))
                 total_delete_count +=1
-                log_removal(status)
+                log_removal(status, "Orphan torrent")
                 counter += 1
             # Max 5 at a time
             if counter > orphan_limit: break
@@ -185,7 +191,8 @@ def on_torrents_status(all_torrents):
         counter = 0
         for torrent_id, status in sorted(all_torrents.items(), key=lambda item: item[1]["time_added"]):
             tlist.append(client.core.remove_torrent(torrent_id, True))
-            log_removal(status, "Free disk space needed")
+            if is_interactive:
+                log_removal(status, "Free disk space needed")
             counter += 1
             if counter >= free_space_limit: break
 
