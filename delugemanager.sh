@@ -1,5 +1,9 @@
 #!/bin/sh
-DISKFREE=$(df | grep /dev/sda2 | awk '{print $4}')
+
+# volume where downloads are stored
+VOLUME="/dev/sda2"
+
+DISKFREE=$(df $VOLUME | tail -1 | awk '{print $4}')
 
 MANAGER_ARGS="--cron --delete-maxcount --delete-orphans"
 
