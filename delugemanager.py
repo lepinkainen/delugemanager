@@ -50,7 +50,7 @@ status_keys = ["state",
                "time_added"
                ]
 
-non_fatal_errors = ["timed out", "Connection timed out"]
+non_fatal_errors = ["timed out", "Connection timed out", "Announce OK"]
 
 count = 0
 torrent_ids = []
@@ -116,6 +116,17 @@ def on_torrents_status(all_torrents):
             log.debug("%-25s count: %d", tracker, len(torrents))
 
     total_delete_count = 0
+
+    # Delete errored torrents (mostly not registered)
+    for tracker, torrents in torrents_by_tracker.items():
+        for torrent_id, status in torrents:
+            # messages are of format
+            # <tracker name>: <message>
+            tracker, message = status["tracker_status"].split(': ', 1)
+            if message not in non_fatal_errors:
+                if message == "Error: torrent not registered with this tracker":
+                    tlist.append(client.core.remove_torrent(torrent_id, True))
+                    log_removal(status, "Torrent not registered with tracker")
 
     # Delete oldest torrents from sites with max count reached
     if args['delete_maxcount']:
@@ -187,6 +198,7 @@ def on_torrents_status(all_torrents):
                 log_removal(status, "Torrent over maximum ratio (%d)" % max_ratio)
 
     # Only delete oldest to free space if nothing else has been deleted during this run
+    # The free space is determined before the run, so this is necessary
     if total_delete_count == 0 and args['free_space']:
         counter = 0
         for torrent_id, status in sorted(all_torrents.items(), key=lambda item: item[1]["time_added"]):
@@ -242,6 +254,7 @@ if __name__ == "__main__":
 
     # turn on logging if running interactively
     if is_interactive:
+        print("running interactively")
         log.setLevel(logging.DEBUG)
 
     cliconnect.addCallbacks(on_connect_success, endSession, errbackArgs=("Connection failed: check settings and try again."))
