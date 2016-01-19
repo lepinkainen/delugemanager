@@ -56,8 +56,7 @@ count = 0
 torrent_ids = []
 
 # CONFIGURATION
-maxlimits = {'bitmetv.org': 50,
-             'tvtorrents.com': 50}
+maxlimits = {'bitmetv.org': 50}
 
 max_ratio = 10
 orphan_limit = 5
