@@ -1,5 +1,14 @@
 #!/bin/sh
 
+# Don't run if deluge has been running for less than one hour
+# or the script might delete torrents that are still rehashing
+DELUGE_UPTIME=$(ps -eo pid,etimes | grep $(pidof -x /usr/bin/deluged) | awk '{print $2}')
+
+if [ "$DELUGE_UPTIME" -lt "3600" ]
+then
+  exit 0
+fi
+
 # volume where downloads are stored
 VOLUME="/dev/sda2"
 
