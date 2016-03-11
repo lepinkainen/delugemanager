@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function, unicode_literals
 
 #from deluge.log import LOG as log
 from deluge.ui.client import client
@@ -64,7 +65,7 @@ free_space_limit = 5
 
 def endSession(esresult):
     if esresult:
-        print esresult
+        print(esresult)
         reactor.stop()
     else:
         client.disconnect()
@@ -72,7 +73,7 @@ def endSession(esresult):
         reactor.stop()
 
 def printReport(rresult):
-    log.debug("TOTAL TORRENTS: %i" % (count))
+    log.debug("TOTAL TORRENTS: %i", count)
     endSession(None)
 
 
@@ -96,7 +97,7 @@ def log_removal(status, reason=None):
 
 def on_torrents_status(all_torrents):
     global filtertime
-    tlist=[]
+    tlist = []
 
     torrents_by_tracker = {}
 
@@ -121,11 +122,15 @@ def on_torrents_status(all_torrents):
         for torrent_id, status in torrents:
             # messages are of format
             # <tracker name>: <message>
-            tracker, message = status["tracker_status"].split(': ', 1)
-            if message not in non_fatal_errors:
-                if message == "Error: torrent not registered with this tracker":
-                    tlist.append(client.core.remove_torrent(torrent_id, True))
-                    log_removal(status, "Torrent not registered with tracker")
+            tracker_status = status["tracker_status"]
+            if ":" in tracker_status:
+                tracker, message = tracker_status.split(': ', 1)
+                if message not in non_fatal_errors:
+                    if message == "Error: torrent not registered with this tracker":
+                        tlist.append(client.core.remove_torrent(torrent_id, True))
+                        log_removal(status, "Torrent not registered with tracker")
+            else:
+                log.error("Unable to split message: %s", tracker_status)
 
     # Delete oldest torrents from sites with max count reached
     if args['delete_maxcount']:
@@ -137,7 +142,7 @@ def on_torrents_status(all_torrents):
                 if tracker in status['tracker']:
                     limit_count += 1
 
-            log.debug("%d torrents found for tracker %s (limit %d)" % (limit_count, tracker, limit))
+            log.debug("%d torrents found for tracker %s (limit %d)", limit_count, tracker, limit)
 
             # over or at limit, start deleting
             if limit_count >= limit:
@@ -150,7 +155,9 @@ def on_torrents_status(all_torrents):
                     print("Deleting %d oldest torrents to make room" % delete_count)
 
                 # start deleting from the oldest onwards
-                for torrent_id, status in sorted(all_torrents.items(), key=lambda item: item[1]["time_added"]):
+                for torrent_id, status in \
+                    sorted(all_torrents.items(), key=lambda item: item[1]["time_added"]):
+
                     if tracker in status['tracker']:
                         tlist.append(client.core.remove_torrent(torrent_id, True))
 
@@ -172,10 +179,10 @@ def on_torrents_status(all_torrents):
             # not all torrents can connect in time
             if not any(reason in status["tracker_status"] for reason in non_fatal_errors):
                 added = datetime.datetime.fromtimestamp(status["time_added"])
-                td = datetime.datetime.now() - added
-                hours, minutes, seconds = td.seconds // 3600, td.seconds // 60 % 60, td.seconds % 60
+                delta = datetime.datetime.now() - added
+                # hours, minutes, seconds = td.seconds // 3600, td.seconds // 60 % 60, td.seconds % 60
                 # don't delete torrents under 1d old as orphans, it might be a connection issue
-                if td.days < 1:
+                if delta.days < 1:
                     if is_interactive:
                         print("Skipping %s" % status["name"])
                         print("Reason: under 1d old")
@@ -192,7 +199,7 @@ def on_torrents_status(all_torrents):
     if args['maximum_ratio']:
         for torrent_id, status in sorted(all_torrents.items(), key=lambda item: item[1]["ratio"]):
             if status['ratio'] > max_ratio:
-                total_delete_count +=1
+                total_delete_count += 1
                 tlist.append(client.core.remove_torrent(torrent_id, True))
                 log_removal(status, "Torrent over maximum ratio (%d)" % max_ratio)
 
@@ -205,7 +212,8 @@ def on_torrents_status(all_torrents):
             if is_interactive:
                 log_removal(status, "Free disk space needed")
             counter += 1
-            if counter >= free_space_limit: break
+            if counter >= free_space_limit:
+                break
 
     # for torrent_id, status in all_torrents.items():
     #     # Filter out torrents with no issues
