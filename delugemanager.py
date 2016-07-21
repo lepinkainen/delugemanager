@@ -129,8 +129,10 @@ def on_torrents_status(all_torrents):
                     if message == "Error: torrent not registered with this tracker":
                         tlist.append(client.core.remove_torrent(torrent_id, True))
                         log_removal(status, "Torrent not registered with tracker")
+            elif tracker_status == '':
+                log.info("Empty tracker status, magnet torrent?")
             else:
-                log.error("Unable to split message: %s", tracker_status)
+                log.error("Unable to split message: '%s'", tracker_status)
 
     # Delete oldest torrents from sites with max count reached
     if args['delete_maxcount']:
