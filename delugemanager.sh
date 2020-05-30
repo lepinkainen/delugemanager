@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
 LOCKFILE=/tmp/delugemanager_lock.txt
-if [ -e ${LOCKFILE} ] && kill -0 `cat ${LOCKFILE}`; then
+if [ -e ${LOCKFILE} ] && kill -0 "$(cat ${LOCKFILE})"; then
     echo "already running"
 
     # Get lock file age in seconds
@@ -22,7 +22,7 @@ echo $$ > ${LOCKFILE}
 
 # Don't run if deluge has been running for less than 30 minutes
 # or the script might delete torrents that are still rehashing -> orphans -> deleted
-DELUGE_UPTIME=$(ps -eo pid,etimes | grep $(pidof -x /usr/bin/deluged) | awk '{print $2}')
+DELUGE_UPTIME=$(pgrep deluged)
 
 if [ "$DELUGE_UPTIME" -lt "1800" ]
 then
@@ -43,8 +43,7 @@ then
     echo "Free disk space needed"
     MANAGER_ARGS="$MANAGER_ARGS --free-space"
 
-    python3 $(dirname $0)/delugemanager.py $MANAGER_ARGS
+    python3 "$(dirname "$0")/delugemanager.py $MANAGER_ARGS"
 fi
-
 
 rm -f ${LOCKFILE}
